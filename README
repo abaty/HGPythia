@@ -9,3 +9,6 @@ make
 This should create a directory called 'bin' with an executable if everything runs correctly.  You can execute the code by running:
 
 ./bin/HGPYTHIA.exe <nEvents< <RNGSeed> <outputFileName>
+
+
+Many questions about the code can just be figured out by reading the core part of the event generation, which is only around 200 lines long (~L350 to 550)
