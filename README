@@ -1,0 +1,11 @@
+This implementation is designed to run on top of an already installed version of PYTHIA.  We suggest first installing PYTHIA 8.243 (http://home.thep.lu.se/Pythia/) and confirming that the generator runs before trying to run this code.  Additionally, an installation of ROOT is also required.  The PYTHIA8 static library and the dynamic ROOT libraries will be used when compiling the HG-PYTHIA code.  g++ and make are used to build the code
+
+Once you have a working version of PYTHIA, go to the base directory of the installation (by default this is in a directory called pythia8243).  Execute the following steps:
+
+mkdir HG-PYTHIA
+cd HG-PYTHIA
+make
+
+This should create a directory called 'bin' with an executable if everything runs correctly.  You can execute the code by running:
+
+./bin/HGPYTHIA.exe <nEvents< <RNGSeed> <outputFileName>

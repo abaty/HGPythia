@@ -1,13 +1,4 @@
 #include "Pythia8/Pythia.h"
-
-//#include <AliDecayerPythia.h>
-//#include <AliGenHijing.h>
-//#include <AliGenPythia.h>
-//#include <AliHeader.h>
-//#include <AliRun.h>
-//#include <AliRunLoader.h>
-//#include <AliStack.h>
-//#include <AliStack.h>
 #include <TCanvas.h>
 #include <TClonesArray.h>
 #include <TF1.h>
@@ -28,21 +19,17 @@
 #include <TTree.h>
 #include <iostream>
 
-//Int_t GenPythia();
-//void CreateGenerator(Double_t energy);
-
-
 using namespace Pythia8;
 Int_t EvalMult(Pythia * pythia,TClonesArray &arr, Double_t etamin1=2.5, Double_t etamax1=5., Double_t etamin2=100, Double_t etamax2=100);
-//static AliGenPythia* pythia;
-//static AliStack* stack;
 
 // 1 mb = 0.1 fm^2
 // 1 b  = 100 fm^2
 // 1 fm^2 = 0.01 b
 // 1 fm^2 = 10 mb
 
-void glauberPythia(const Int_t nev        = 100,
+void glauberPythia(const int RNGSeedOffset = 0,
+                   const std::string outputName = "gtree.root",
+                   const Int_t nev        = 100,
 		   const Double_t energy  = 5020,
                    const Bool_t dotree    = 1,
                    const Double_t sigHin  = -1,		   
@@ -51,22 +38,16 @@ void glauberPythia(const Int_t nev        = 100,
                    const Int_t B          = 208,
 		   const Double_t bmin    = 0., 
 		   const Double_t bmax    = 20., 
-                   const Bool_t runpythia = 1,
 		   const Bool_t shadow    = kFALSE, 
 		   const Bool_t elastic   = kFALSE) 
 {
   // libraries needed ...
   gSystem->Load("libPhysics");
   gSystem->Load("libEG");
-//  gSystem->Load("libFASTSIM");
-
-  const char *outfilename="gtree.root";
-  if (runpythia==0)
-    outfilename="gtreemfc.root";
 
   //initialize pythia
   Pythia pythia;
-  pythia.readString("Random:SetSeed = " + std::to_string( gRandom->Integer(-1) ));
+  pythia.readString("Random:SetSeed = " + std::to_string( 35789 + RNGSeedOffset));
   pythia.readString("Beams:eCM = " + std::to_string( (double) energy) );
   pythia.readString("SoftQCD:inelastic = on");
   pythia.init();
@@ -119,6 +100,7 @@ void glauberPythia(const Int_t nev        = 100,
     }
   }
 
+  //some distributions for heavy ions
   TF1* rwsF[2];
   if (A==208)
     rwsF[0] =  new TF1("wsPb", "7.208e-4*4.*TMath::Pi()*x^2/(1+exp((x-6.62)/0.546))", 0., 20.);
@@ -166,12 +148,10 @@ void glauberPythia(const Int_t nev        = 100,
   else if (B==1)
     rwsF[1] = new TF1("prot","x*x*exp(-x/0.234)",0,5);
 
-  //
   // matter distribution in proton
   TF1* eik = new TF1("eik", "[0]^2/[1] * ([0]*x)^3*TMath::BesselK(3, [0] * x)", 0., 10.);
   eik->SetParameter(0, 3.9);
   eik->SetParameter(1, 96);
-  //
  
   // Ranges for histos
   Float_t npartMax, ncolMax;
@@ -242,6 +222,7 @@ void glauberPythia(const Int_t nev        = 100,
     ntrackmax=2000;
   }
 
+  //define some histograms
   TH2F *hNpartVsB = new TH2F("hNpartVsB",";Npart;B (fm)",420,0,420,200,0,20);
   hNpartVsB->Sumw2();
   TH2F *hNcollVsB = new TH2F("hNcollVsB",";Ncoll;B (fm)",ncollbins,0,ncollbins,200,0,20);
@@ -267,6 +248,7 @@ void glauberPythia(const Int_t nev        = 100,
   TH2F *hMultVsMPIpp = new TH2F("hMultVsMPIpp",";Mult;#MPI",200,0,200,30,0,30);
   hMultVsMPIpp->Sumw2();
 
+  //variables needed for Glauber
   Double_t x,y;
   Double_t xx[2][208];
   Double_t yy[2][208];
@@ -309,7 +291,7 @@ void glauberPythia(const Int_t nev        = 100,
   TH1F* wH    = new TH1F("wH",     "woundedness ", 100, -0.5, 99.5);
 
   // open a file for an event tree 
-  TFile hfile(outfilename,"RECREATE","glauber tree");
+  TFile hfile(outputName.c_str(),"RECREATE","glauber tree");
   hfile.SetCompressionLevel(5);
   typedef struct 
   {
@@ -482,56 +464,47 @@ void glauberPythia(const Int_t nev        = 100,
 	njetT+=njet;
       } // target
     } // projectlile
-      
+  
+    //Glauber is finished here
+    
     if (ncol<1) {
       --nevrun;
-      if(nevrun%100 == 0) std::cout << "Events Run: " << nevrun << std::endl;
       continue;
     }
-      
+       
+ 
     //
     // Generate Pythia events
     //      
     Int_t mpiT[20];
       for (Int_t j = 0; j < 20; j++) {
         mpiT[j] = gevent.mpi[j];
- //     std::cout << "MPI " << j << " "  << gevent.mpi[j] << std::endl;
       }
     Int_t multP   = 0;
     Int_t multP1  = 0;
     Int_t multPv0 = 0;
     arr.Clear();
-    int lastUpdate = -1;
-    while (runpythia) {
+    while (true) {
+      //count how many more pp events are needed and store as nc
       Int_t nc = 0;
       for (Int_t j = 0; j < 20; j++) {
 	    nc += mpiT[j];
       }
 
-      if( nc%100==0 && (lastUpdate !=nc)){
-        std::cout << "NC: " << nc;
-        for (Int_t j = 0; j < 20; j++) {
-          std::cout << " " << j << " "  << mpiT[j];
-        }
-        std::cout  << " " << std::endl;
-        lastUpdate = nc;
-      }
-
+      //if nc is 0 we are done....
       if (nc == 0) break;
       arrpp.Clear();
      
-      //get a PYTHIA event...
+      //otherwise get a PYTHIA event...
       while(true){
         if (pythia.next()) break;
       }
       Int_t mpic = pythia.info.nMPI();
      
-     
-      //Int_t mpic = GenPythia();
+      //get multiplicities for this event 
       Int_t mult0 = EvalMult(&pythia, arrpp,cetamin,cetamax);
       Int_t mulv0 = EvalMult(&pythia, arrpp,-3.7,-1.7,2.8,5.1);
       Int_t mult1 = EvalMult(&pythia, arrpp,1,2);
-      //std::cout << mult0 << " " << mulv0 << " " << mult1 << std::endl;
       if (1) { //fill pp
 	    Int_t npp = arrpp.GetEntries();
 	    hMultVsMPIpp->Fill(npp,mpic);
@@ -542,6 +515,7 @@ void glauberPythia(const Int_t nev        = 100,
 	    }
       }
       if (mpic > 20) continue;
+      //add this pp event mulitplicites to the total counters for a HI event, and subtract off the event from the number of events needed at that given number of MPIs
       if (mpiT[mpic] > 0) {
 	    mpiT[mpic]--;
 	    multP   += mult0;
@@ -554,6 +528,8 @@ void glauberPythia(const Int_t nev        = 100,
     }
 
     printf("%5d %5d %13.3f %6d\n", iev, ncol, b, multP);
+
+    //event generation is done, below is some bookkeeping histograms
 
     Double_t xd1[208];
     Double_t yd1[208];  
@@ -711,203 +687,21 @@ void glauberPythia(const Int_t nev        = 100,
   swatch.Stop();
   swatch.Print();
 
-/*
-  if (gROOT->IsBatch())
-    return;
-
-  TCanvas* c1 = new TCanvas("c1");
-  c1->Divide(1,3);
-  c1->cd(1);
-  epsSTH->Draw();
-  c1->cd(2);
-  ncolH->Draw();
-  c1->cd(3);
-  npaH->Draw();
-
-  TCanvas* c2 = new TCanvas("c2");
-  Float_t xA[2500];
-  Float_t yA[2500];
-  for (Int_t i = 0; i < ncolB; i++)
-    {
-      yA[i] = jetTH->GetBinContent(2*i)  + jetTH->GetBinContent(2*i + 1);
-      xA[i] = 0.5 * (jetTH->GetBinCenter(2*i)   + jetTH->GetBinCenter(2*i + 1)) * 71./125.;
-    }
-  TGraph* jetTG = new TGraph(ncolB, xA, yA);
-  jetTG->SetMarkerStyle(20);
-  jetTG->SetMarkerColor(4);
-  jetTG->SetMarkerSize(0.8);  
-  c2->cd();
-
-  ncolH->Draw("");
-  jetTG->Draw("psame");
-
-  TCanvas* c3 = new TCanvas("c3");
-  c3->cd();
-  bnnH->SetXTitle("N_{col}");
-  bnnH->SetYTitle("<b_{NN}> (fm)");
-  bnnH->Draw();
-
-  TCanvas* c4 = new TCanvas("c4");
-  c4->cd();
-  bnnNH->SetXTitle("N_{part}");
-  bnnNH->SetYTitle("<b_{NN}> (fm)");
-  bnnNH->Draw();
-
-  TCanvas* c5 = new TCanvas("c5");
-  c5->cd();
-  jetH->Draw();
-
-  TCanvas* c6 = new TCanvas("c6");
-  c6->cd();
-  ratioH1->Draw();
-
-  TCanvas* c7 = new TCanvas("c7");
-  c7->cd();
-  ratioH2->SetXTitle("N_{col,eiko}");
-  ratioH2->SetYTitle("N_{col, eiko} / N_{col, MC}");
-  ratioH2->Draw();
-
-  TCanvas* c8 = new TCanvas("c8");
-  c8->cd();
-  bnnBH->Scale(1.);
-
-  // black: ncol_eikonal / ncol_MC vs b
-  TH1D* h1 = ncolEI->ProjectionX();
-  TH1D* h2 = ncolMC->ProjectionX();
-  h1->Divide(h2);
-  h1->Draw();
-  // red <bNN> vs b
-  bnnBH->SetLineColor(2);
-  bnnBH->Draw("same");
-  // green: #jets vs b
-  jetBH->SetLineColor(3);
-  jetBH->Scale(1./1.65/1.1);
-  jetBH->Draw("same");
-
-
-  TCanvas* c9 = new TCanvas("c9");
-  c9->cd();
-  bnnBH->Draw();
-  bnnBH->SetXTitle("b (fm)");
-  bnnBH->SetYTitle("b_{NN} (fm)");
-
-  TCanvas* c10 = new TCanvas("c10");
-  jpsiH->Draw();
-  jpsiH->SetXTitle("N_{psi}");
-
-  TCanvas* c11 = new TCanvas("c11");
-  wH->Draw();
-  wH->SetXTitle("Woundedness");
-
-  TCanvas* c12 = new TCanvas("c12");
-  bH->Draw();
-  bH->SetXTitle("b (fm)");
-  bH->SetYTitle("dN/db (fm^{-1})");
-
-  TCanvas* c13 = new TCanvas("c13");
-  ncoH2->Draw();
-  ncoH2->SetXTitle("N_{coll}");
-  ncoH2->SetYTitle("N_{part}");
-
   printf("Total x-section %13.3f (barn) \n", 0.01 * TMath::Pi() * bmax * bmax * Float_t(nAcc1)/Float_t(nevrun));
   printf("Total x-section %13.3f (barn) \n", 0.01 * TMath::Pi() * bmax * bmax * Float_t(nAcc2)/Float_t(nevrun));
   printf("Mean impact parameter %13.3f \n", dsum0/ncol0);
-*/
  }
     
 
-/*
-void CreateGenerator(Double_t energy)
-{
-  pythia = new AliGenPythia(1);
-  pythia->SetSeed(gRandom->Integer(-1));
-  pythia->SetProcess(kPyMb);
-  pythia->SetTune(350); //perugia 2011
-  pythia->SetEnergyCMS(energy);
-  pythia->SetEventListRange(-99, -99);
-  ((AliDecayerPythia*)pythia->GetDecayer())->SwitchOffPi0();
-}
-
-void InitPythia(Double_t energy)
-{
-  //  Load libraries
-  if (gAlice) {
-    TFolder *folder = new TFolder("myfolder","myfolder");
-    AliRunLoader* rl = new AliRunLoader(folder);
-    rl->MakeStack();
-    rl->MakeHeader();
-    stack = rl->Stack();
-  } else {
-    stack = new AliStack(999);
-  }
-  CreateGenerator(energy);
-  //  Create and Initialize Generator
-  printf("%p \n", pythia);
-  pythia->Init();
-  pythia->SetStack(stack);
-}
-
-Int_t GenPythia()
-{
-  stack->Reset();
-  pythia->Generate();
-  Int_t npart = stack->GetNprimary();
-  Int_t mpi = AliPythia::Instance()->GetMSTI(31);
-  return mpi;
-}
-
-Int_t EvalMult(TClonesArray &arr, Double_t etamin1, Double_t etamax1, Double_t etamin2, Double_t etamax2)
-{
-  Int_t npart = stack->GetNprimary();
-  Int_t mult = 0;
-  Int_t arri = arr.GetEntries();
-  for (Int_t part=0; part<npart; part++) {
-    TParticle *particle = stack->Particle(part);
-    Int_t pdg  = particle->GetPdgCode();
-    if (!stack->IsPhysicalPrimary(part))   continue;
- if (particle->GetPDG(1)->Charge() == 0) continue;
-    Float_t eta = particle->Eta();
-    Float_t etaabs = TMath::Abs(eta);
-    if (etamin2>=99) {
- if (etaabs > etamin1 && etaabs < etamax1) {
-	mult++;
-      }
-    } else {
-      if ((eta>etamin1 && eta<etamax1) ||
-	  (eta>etamin2 && eta<etamax2)) {
-	mult++;
-      }
-    }
-    if (etaabs<1) {
-      new(arr[arri]) TVector3(particle->Px(),particle->Py(),particle->Pz());
-      arri++;
-    }
-  } // particle loop
-  return mult;
-}
- 
-void printHJ(Double_t en, Bool_t sh=0) 
-{
-  AliGenHijing *genHi = new AliGenHijing(-1); 
-  genHi->SetShadowing(sh);
-  genHi->SetEnergyCMS(en);
-  genHi->init();
-}
-*/
 
 Int_t EvalMult(Pythia * pythia, TClonesArray &arr, Double_t etamin1, Double_t etamax1, Double_t etamin2, Double_t etamax2)
 {
-    //Int_t npart = stack->GetNprimary();
     Int_t nparticle = pythia->event.size();
     Int_t mult = 0;
     Int_t arri = arr.GetEntries();
     for (Int_t part=0; part<nparticle; part++) {
         if( !(pythia->event[part].isFinal())) continue;
         if( !(pythia->event[part].isCharged())) continue;
-        //TParticle *particle = stack->Particle(part);
-        //Int_t pdg  = particle->GetPdgCode();
-        //if (!stack->IsPhysicalPrimary(part))   continue;
-        //if (particle->GetPDG(1)->Charge() == 0) continue;
         Float_t eta = pythia->event[part].eta();
         Float_t etaabs = TMath::Abs(eta);
         if (etamin2>=99) {
@@ -928,11 +722,20 @@ Int_t EvalMult(Pythia * pythia, TClonesArray &arr, Double_t etamin1, Double_t et
     return mult;
 }
 
-int main(){
-  std::cout << "starting" << std::endl;
-  //glauberPythia();//PbPb (default)
+int main(int argc, const char* argv[]){
 
-  glauberPythia( 10000, 5020, 1 , -1 , 57, 1, 1, 0 , 5, 1);  //pp settings
+  if(argc != 4)
+  {
+    std::cout << "Usage: HGPythia <nEvents> <jobNumber> <outputName>" << std::endl;
+    return 1;
+  }  
+
+  int nEvents = std::atoi(argv[1]); 
+  int RNGoffset = std::atoi(argv[2]); 
+  std::string outputName = argv[3];
+
+  //glauberPythia(RNGoffset, outputName, nEvents);//PbPb (default)
+  glauberPythia( RNGoffset,outputName, nEvents, 5020, 1 , -1 , 57, 1, 1, 0 , 5);  //pp settings
 
   return 1;
 }
