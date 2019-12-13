@@ -4,6 +4,7 @@ Once you have a working version of PYTHIA, go to the base directory of the insta
 
 mkdir HG-PYTHIA
 cd HG-PYTHIA
+git clone https://github.com/abaty/HGPy.git
 make
 
 This should create a directory called 'bin' with an executable if everything runs correctly.  You can execute the code by running:

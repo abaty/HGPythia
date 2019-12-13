@@ -20,7 +20,7 @@
 #include <iostream>
 
 using namespace Pythia8;
-Int_t EvalMult(Pythia * pythia,TClonesArray &arr, Double_t etamin1=2.5, Double_t etamax1=5., Double_t etamin2=100, Double_t etamax2=100);
+Int_t EvalMult(Pythia * pythia,TClonesArray &arr, Double_t etamin1=2.5, Double_t etamax1=5., Double_t etamin2=100, Double_t etamax2=100, bool doEt = false);
 
 // 1 mb = 0.1 fm^2
 // 1 b  = 100 fm^2
@@ -303,6 +303,7 @@ void glauberPythia(const int RNGSeedOffset = 0,
     Int_t mult;
     Int_t mul1;
     Int_t muv0;
+    Float_t hfSum;
     Int_t nch;
     Int_t nch1;
     Int_t nch2;
@@ -326,6 +327,7 @@ void glauberPythia(const int RNGSeedOffset = 0,
     tree->Branch("mult",  &gevent.mult,  "mult/I"); // forward mult symmetric
     tree->Branch("mul1",  &gevent.mul1,  "mul1/I"); // mult 1<eta<2 
     tree->Branch("muv0",  &gevent.muv0,  "muv0/I"); // forward mult v0
+    tree->Branch("hfSum", &gevent.hfSum, "hfSum/F"); // eT distribution from 3-5 in eta
     tree->Branch("nch",   &gevent.nch,   "nch/I");  // midrapity mult
     tree->Branch("nch1",  &gevent.nch1,  "nch1/I"); // midrap pt > 1 
     tree->Branch("nch2",  &gevent.nch2,  "nch2/I"); // midrap pt > 2 
@@ -483,6 +485,7 @@ void glauberPythia(const int RNGSeedOffset = 0,
     Int_t multP   = 0;
     Int_t multP1  = 0;
     Int_t multPv0 = 0;
+    Float_t hfSum = 0;
     arr.Clear();
     while (true) {
       //count how many more pp events are needed and store as nc
@@ -505,6 +508,7 @@ void glauberPythia(const int RNGSeedOffset = 0,
       Int_t mult0 = EvalMult(&pythia, arrpp,cetamin,cetamax);
       Int_t mulv0 = EvalMult(&pythia, arrpp,-3.7,-1.7,2.8,5.1);
       Int_t mult1 = EvalMult(&pythia, arrpp,1,2);
+      Float_t hfSumTemp = ((Float_t) EvalMult(&pythia, arrpp, -5, -3, 3, 5, true)) / 1000.0;
       if (1) { //fill pp
 	    Int_t npp = arrpp.GetEntries();
 	    hMultVsMPIpp->Fill(npp,mpic);
@@ -521,13 +525,14 @@ void glauberPythia(const int RNGSeedOffset = 0,
 	    multP   += mult0;
 	    multPv0 += mulv0;
 	    multP1  += mult1;
+            hfSum   += hfSumTemp;
         arr.AbsorbObjects(&arrpp);
       } else {
 	    continue;
       }
     }
 
-    printf("%5d %5d %13.3f %6d\n", iev, ncol, b, multP);
+    if(iev%10 == 0) printf("%5d %5d %13.3f %6d\n", iev, ncol, b, multP);
 
     //event generation is done, below is some bookkeeping histograms
 
@@ -646,6 +651,7 @@ void glauberPythia(const int RNGSeedOffset = 0,
       gevent.mult  = vsym;
       gevent.mul1  = multP1;
       gevent.muv0  = multPv0;
+      gevent.hfSum = hfSum;
       gevent.ncoll = ncol;
       gevent.b     = b;
       gevent.bnn   = dsum/ncol;
@@ -694,24 +700,29 @@ void glauberPythia(const int RNGSeedOffset = 0,
     
 
 
-Int_t EvalMult(Pythia * pythia, TClonesArray &arr, Double_t etamin1, Double_t etamax1, Double_t etamin2, Double_t etamax2)
+Int_t EvalMult(Pythia * pythia, TClonesArray &arr, Double_t etamin1, Double_t etamax1, Double_t etamin2, Double_t etamax2, bool doEt)
 {
     Int_t nparticle = pythia->event.size();
     Int_t mult = 0;
+    Float_t Et = 0;
     Int_t arri = arr.GetEntries();
     for (Int_t part=0; part<nparticle; part++) {
         if( !(pythia->event[part].isFinal())) continue;
-        if( !(pythia->event[part].isCharged())) continue;
+        if(!doEt && !(pythia->event[part].isCharged())) continue;
+        int id = TMath::Abs(pythia->event[part].id());
+        if( id == 12 || id == 14 || id==16) continue;//reject neutrinos
         Float_t eta = pythia->event[part].eta();
         Float_t etaabs = TMath::Abs(eta);
         if (etamin2>=99) {
             if (etaabs > etamin1 && etaabs < etamax1) {
                 mult++;
+                if(doEt) Et += pythia->event[part].pT();
             }
         } else {
             if ((eta>etamin1 && eta<etamax1) ||
                 (eta>etamin2 && eta<etamax2)) {
                 mult++;
+                if(doEt) Et += pythia->event[part].pT();
             }
         }
         if (etaabs<1) {
@@ -719,6 +730,7 @@ Int_t EvalMult(Pythia * pythia, TClonesArray &arr, Double_t etamin1, Double_t et
             arri++;
         }
     } // particle loop
+    if(doEt) return (Int_t)(Et*1000);
     return mult;
 }
 
@@ -734,8 +746,8 @@ int main(int argc, const char* argv[]){
   int RNGoffset = std::atoi(argv[2]); 
   std::string outputName = argv[3];
 
-  //glauberPythia(RNGoffset, outputName, nEvents);//PbPb (default)
-  glauberPythia( RNGoffset,outputName, nEvents, 5020, 1 , -1 , 57, 1, 1, 0 , 5);  //pp settings
+  glauberPythia(RNGoffset, outputName, nEvents);//PbPb (default)
+  //glauberPythia( RNGoffset,outputName, nEvents, 5020, 1 , -1 , 57, 1, 1, 0 , 5);  //pp settings
 
   return 1;
 }
