@@ -1,3 +1,6 @@
+This code is based on the work of Constantin Loizides and Andreas Morsch, as detailed in Phys.Lett. B773 (2017) 408-411 (arXiv:1705.08856).  It was ported to run on top of a default PYTHIA installation by Austin Baty (abaty@rice.edu).
+
+
 This implementation is designed to run on top of an already installed version of PYTHIA.  We suggest first installing PYTHIA 8.243 (http://home.thep.lu.se/Pythia/) and confirming that the generator runs before trying to run this code.  Additionally, an installation of ROOT is also required.  The PYTHIA8 static library and the dynamic ROOT libraries will be used when compiling the HG-PYTHIA code.  g++ and make are used to build the code
 
 Once you have a working version of PYTHIA, go to the base directory of the installation (by default this is in a directory called pythia8243).  Execute the following steps:

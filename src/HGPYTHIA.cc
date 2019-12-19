@@ -1,3 +1,8 @@
+/*
+This code is based on the work of Constantin Loizides and Andreas Morsch, as detailed in Phys.Lett. B773 (2017) 408-411 (arXiv:1705.08856).  
+It was ported to run on top of a default PYTHIA installation by Austin Baty (abaty@rice.edu).
+*/
+
 #include "Pythia8/Pythia.h"
 #include <TCanvas.h>
 #include <TClonesArray.h>
