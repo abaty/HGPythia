@@ -19,6 +19,7 @@ It was ported to run on top of a default PYTHIA installation by Austin Baty (aba
 #include <TProfile.h>
 #include <TROOT.h>
 #include <TRandom.h>
+#include <TRandom3.h>
 #include <TStopwatch.h>
 #include <TSystem.h>
 #include <TTree.h>
@@ -50,9 +51,14 @@ void glauberPythia(const int RNGSeedOffset = 0,
   gSystem->Load("libPhysics");
   gSystem->Load("libEG");
 
+  //make our TRandom object
+  TRandom3 * random = new TRandom3( 7284 + RNGSeedOffset ); 
+
+
   //initialize pythia
   Pythia pythia;
-  pythia.readString("Random:SetSeed = " + std::to_string( 35789 + RNGSeedOffset));
+  pythia.readString("Random:SetSeed = on");
+  pythia.readString("Random:seed = " + std::to_string( 35789 + RNGSeedOffset));
   pythia.readString("Beams:eCM = " + std::to_string( (double) energy) );
   pythia.readString("SoftQCD:inelastic = on");
   pythia.init();
@@ -358,7 +364,7 @@ void glauberPythia(const int RNGSeedOffset = 0,
   for (Int_t iev = 0; iev < nev; nevrun++) {
     for (Int_t i = 0; i < 20; i++) gevent.mpi[i] = 0;
     // Position the nucleons
-    Float_t b = TMath::Sqrt(bmin * bmin + gRandom->Rndm()*(bmax*bmax - bmin * bmin));
+    Float_t b = TMath::Sqrt(bmin * bmin + random->Rndm()*(bmax*bmax - bmin * bmin));
     // initialise counters
     Int_t nPsi2 = 0;
     Int_t njetT = 0;
@@ -373,13 +379,13 @@ void glauberPythia(const int RNGSeedOffset = 0,
           Double_t r;
           Double_t theta;
           f2->GetRandom2(r,theta);
-          Double_t phi = 2*TMath::Pi()*gRandom->Rndm();
+          Double_t phi = 2*TMath::Pi()*random->Rndm();
           x = r * TMath::Sin(phi) * TMath::Sin(theta);
           y = r * TMath::Cos(phi) * TMath::Sin(theta);
 	} else {
 	  Double_t r      = rwsF[j]->GetRandom();
-	  Double_t phi    = 2. * TMath::Pi() * gRandom->Rndm();
-	  Double_t costh  = 2. * gRandom->Rndm() - 1.;
+	  Double_t phi    = 2. * TMath::Pi() * random->Rndm();
+	  Double_t costh  = 2. * random->Rndm() - 1.;
 	  Double_t costh2 = costh * costh;
 	  Double_t sinth  = 0.;
 	  if (costh2 < 1.) {
@@ -415,7 +421,7 @@ void glauberPythia(const int RNGSeedOffset = 0,
 	  woundedT[0][i] += 1;
 	  woundedT[1][j] += 1;
 	  ncolT++;
-	  if (gRandom->Rndm() < 3.7e-3) {
+	  if (random->Rndm() < 3.7e-3) {
 	    nPsiT++;
 	    nPsi++;
 	    if (woundedJ[0][i] > 0 || woundedJ[1][j] > 0)
@@ -440,7 +446,7 @@ void glauberPythia(const int RNGSeedOffset = 0,
 	Double_t chi    = eik->Eval(sqrt(r2));
 	Double_t gs     = (1. - TMath::Exp(-2.* (sigS+sigHS)/sigS*chi));
 	Double_t gstot  = 2.*(1.-TMath::Sqrt(1-gs));
-	Double_t rantot = gRandom->Rndm() * gstot0;
+	Double_t rantot = random->Rndm() * gstot0;
 	if (rantot  > gstot && elastic)           continue;
 	if (rantot  > gs)                         continue;
 	wounded[0][i] = 1;
@@ -460,10 +466,10 @@ void glauberPythia(const int RNGSeedOffset = 0,
 	  continue;
 	}
 
-	Double_t xr = - TMath::Log(TMath::Exp(-tt) + gRandom->Rndm()*(1.-TMath::Exp(-tt)));
+	Double_t xr = - TMath::Log(TMath::Exp(-tt) + random->Rndm()*(1.-TMath::Exp(-tt)));
 	while(1) {
 	  njet++;
-	  xr-=TMath::Log(gRandom->Rndm());
+	  xr-=TMath::Log(random->Rndm());
 	  //cout << "xr " << njet << " " <<  xr << " " << tt << endl;
 	  if (xr > tt) break;
 	}
