@@ -14,4 +14,10 @@ This should create a directory called 'bin' with an executable if everything run
 ./bin/HGPYTHIA.exe <nEvents< <RNGSeed> <outputFileName>
 
 
+Some settings in the main() function might need to be changed if you would like to run a collision system/energy that is not the default (5TeV PbPb).  If you make changes to the source code, you can recompile with the command:
+
+make clean
+make
+
+
 Many questions about the code can just be figured out by reading the core part of the event generation, which is only around 200 lines long (~L350 to 550)
