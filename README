@@ -5,7 +5,7 @@ This implementation is designed to run on top of an already installed version of
 
 Once you have a working version of PYTHIA, go to the base directory of the installation (by default this is in a directory called pythia8243).  Execute the following steps:
 
-git clone https://github.com/abaty/HGPy.git HG-PYTHIA
+git clone https://github.com/abaty/HGPythia.git HG-PYTHIA
 cd HG-PYTHIA
 make
 
