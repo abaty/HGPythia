@@ -11,7 +11,7 @@ make
 
 This should create a directory called 'bin' with an executable if everything runs correctly.  You can execute the code by running:
 
-./bin/HGPYTHIA.exe <nEvents< <RNGSeed> <outputFileName>
+./bin/HGPYTHIA.exe <nEvents> <RNGSeed> <outputFileName>
 
 
 Some settings in the main() function might need to be changed if you would like to run a collision system/energy that is not the default (5TeV PbPb).  If you make changes to the source code, you can recompile with the command:
