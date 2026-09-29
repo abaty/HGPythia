@@ -372,27 +372,27 @@ void glauberPythia(const int RNGSeedOffset = 0,
       Int_t j      = (i >= A)? 1 : 0;
       Int_t k      = (i >= A)? i - A : i;
       Double_t dx  = (i >= A)? -b/2. : b/2.;
-      if (j == 0 || (j == 1 && B != 1)) {
-	TF2 *f2 = dynamic_cast<TF2*>(rwsF[j]);
-	if (f2) {
-          Double_t r;
-          Double_t theta;
-          f2->GetRandom2(r,theta);
-          Double_t phi = 2*TMath::Pi()*random->Rndm();
-          x = r * TMath::Sin(phi) * TMath::Sin(theta);
-          y = r * TMath::Cos(phi) * TMath::Sin(theta);
-	} else {
-	  Double_t r      = rwsF[j]->GetRandom();
-	  Double_t phi    = 2. * TMath::Pi() * random->Rndm();
-	  Double_t costh  = 2. * random->Rndm() - 1.;
-	  Double_t costh2 = costh * costh;
-	  Double_t sinth  = 0.;
-	  if (costh2 < 1.) {
-	    sinth = TMath::Sqrt(1. - costh2);
-	  }
-	  x = r * sinth * TMath::Cos(phi);
-	  y = r * sinth * TMath::Sin(phi);      
-	}
+      // Sample the position of every nucleon, including single nuclei,
+      // from the proton profile on either side, so that treatment of p-A and A-p collisions is symmetric
+      TF2 *f2 = dynamic_cast<TF2*>(rwsF[j]);
+      if (f2) {
+        Double_t r;
+        Double_t theta;
+        f2->GetRandom2(r,theta);
+        Double_t phi = 2*TMath::Pi()*random->Rndm();
+        x = r * TMath::Sin(phi) * TMath::Sin(theta);
+        y = r * TMath::Cos(phi) * TMath::Sin(theta);
+      } else {
+        Double_t r      = rwsF[j]->GetRandom();
+        Double_t phi    = 2. * TMath::Pi() * random->Rndm();
+        Double_t costh  = 2. * random->Rndm() - 1.;
+        Double_t costh2 = costh * costh;
+        Double_t sinth  = 0.;
+        if (costh2 < 1.) {
+          sinth = TMath::Sqrt(1. - costh2);
+        }
+        x = r * sinth * TMath::Cos(phi);
+        y = r * sinth * TMath::Sin(phi);
       }
       xx[j][k] = x + dx;
       yy[j][k] = y;
