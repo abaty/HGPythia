@@ -480,6 +480,8 @@ void glauberPythia(const int RNGSeedOffset = 0,
 	  //cout << "xr " << njet << " " <<  xr << " " << tt << endl;
 	  if (xr > tt) break;
 	}
+  // Collisions with more than 20 minijets are counted in the last bin
+	if (njet >= 20) njet = 19;
 	gevent.mpi[njet]++;
 	njetT+=njet;
       } // target
@@ -536,7 +538,7 @@ void glauberPythia(const int RNGSeedOffset = 0,
 	      hPtVsMPIpp->Fill(pt,mpic);
 	    }
       }
-      if (mpic > 20) continue;
+      if (mpic >= 20) continue;
       //add this pp event mulitplicites to the total counters for a HI event, and subtract off the event from the number of events needed at that given number of MPIs
       if (mpiT[mpic] > 0) {
 	    mpiT[mpic]--;
