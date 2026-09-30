@@ -33,6 +33,42 @@ Int_t EvalMult(Pythia * pythia,TClonesArray &arr, Double_t etamin1=2.5, Double_t
 // 1 fm^2 = 0.01 b
 // 1 fm^2 = 10 mb
 
+// Nucleon density used to sample the nucleon positions of a nucleus with mass number A
+TF1* NucleonDensity(Int_t A)
+{
+  TF1* f = 0;
+  if (A==208)
+    f =  new TF1("wsPb", "7.208e-4*4.*TMath::Pi()*x^2/(1+exp((x-6.62)/0.546))", 0., 20.);
+  else if (A==197)
+    f =  new TF1("wsAu", "8.596e-04*4.*TMath::Pi()*x^2/(1+exp((x-6.38)/0.535))", 0., 20.);
+  else if (A==129) {
+    TF2 *f2 = new TF2("wsXe2a","x*x*TMath::Sin(y)/(1+exp((x-[0]*(1+[2]*0.315*(3*pow(cos(y),2)-1.0)+[3]*0.105*(35*pow(cos(y),4)-30*pow(cos(y),2)+3)))/[1]))",0,15,0.0,TMath::Pi());
+    f2->SetNpx(120);
+    f2->SetNpy(120);
+    f2->SetParameters(5.36,0.59,0.18,0);
+    f = f2;
+  }
+  else if (A==40)
+    f =  new TF1("wsAr", "1.*TMath::Pi()*x^2/(1+exp((x-3.53)/0.542))", 0., 15.);
+  else if (A==20) {
+    f =  new TF1("wsNe", "x*x*(1+[2]*(x/[0])**2)/(1+exp((x-[0])/[1]))",0, 10.);
+    f->SetParameters(2.791,0.698,-0.168);
+  } else if (A==16) {
+    f =  new TF1("wsO", "x*x*(1+[2]*(x/[0])**2)/(1+exp((x-[0])/[1]))",0, 10.);
+    f->SetParameters(2.608,0.513,-0.051);
+  } else if (A==6)
+    f =  new TF1("wsC", "7.208e-4*4.*TMath::Pi()*x^2*(1.-0.149*(x/2.46)**2)/(1+exp((x-2.46)/0.522))", 0., 10.);
+  else if (A==3)
+    f =  new TF1("wsHe", "7.208e-4*4.*TMath::Pi()*x^2*(1.+0.517*(x/0.964)**2)/(1+exp((x-0.964)/0.322))", 0., 10.);
+  else if (A==1)
+    f = new TF1("prot","x*x*exp(-x/0.234)",0,5);
+  else {
+    std::cout << "Error: nucleus with mass number " << A << " not supported" << std::endl;
+    exit(1);
+  }
+  return f;
+}
+
 void glauberPythia(const int RNGSeedOffset = 0,
                    const std::string outputName = "gtree.root",
                    const Int_t nev        = 100,
@@ -113,54 +149,8 @@ void glauberPythia(const int RNGSeedOffset = 0,
 
   //some distributions for heavy ions
   TF1* rwsF[2];
-  if (A==208)
-    rwsF[0] =  new TF1("wsPb", "7.208e-4*4.*TMath::Pi()*x^2/(1+exp((x-6.62)/0.546))", 0., 20.);
-  else if (A==197)
-    rwsF[0] =  new TF1("wsAu", "8.596e-04*4.*TMath::Pi()*x^2/(1+exp((x-6.38)/0.535))", 0., 20.);
-  else if (A==129) {
-    TF2 *f = new TF2("wsXe2a","x*x*TMath::Sin(y)/(1+exp((x-[0]*(1+[2]*0.315*(3*pow(cos(y),2)-1.0)+[3]*0.105*(35*pow(cos(y),4)-30*pow(cos(y),2)+3)))/[1]))",0,15,0.0,TMath::Pi());
-    rwsF[0]=f; 
-    f->SetNpx(120);
-    f->SetNpy(120);
-    f->SetParameters(5.36,0.59,0.18,0);
-  }
-  else if (A==40)
-    rwsF[0] =  new TF1("wsAr", "1.*TMath::Pi()*x^2/(1+exp((x-3.53)/0.542))", 0., 15.);
-  else if (A==20) {
-    rwsF[0] =  new TF1("wsNe", "x*x*(1+[2]*(x/[0])**2)/(1+exp((x-[0])/[1]))",0, 10.);
-    rwsF[0]->SetParameters(2.791,0.698,-0.168);
-  } else if (A==16) {
-    rwsF[0] =  new TF1("wsO", "x*x*(1+[2]*(x/[0])**2)/(1+exp((x-[0])/[1]))",0, 10.);
-    rwsF[0]->SetParameters(2.608,0.513,-0.051);
-  } else if (A==6)
-    rwsF[0] =  new TF1("wsC", "7.208e-4*4.*TMath::Pi()*x^2*(1.-0.149*(x/2.46)**2)/(1+exp((x-2.46)/0.522))", 0., 10.);
-  else if (A==3)
-    rwsF[0] =  new TF1("wsHe", "7.208e-4*4.*TMath::Pi()*x^2*(1.+0.517*(x/0.964)**2)/(1+exp((x-0.964)/0.322))", 0., 10.);
-  else 
-    rwsF[0] = new TF1("prot","x*x*exp(-x/0.234)",0,5);
-
-  if (B==208)
-    rwsF[1] =  new TF1("wsPb", "7.208e-4*4.*TMath::Pi()*x^2/(1+exp((x-6.62)/0.546))", 0., 20.);
-  else if (B==197)
-    rwsF[1] =  new TF1("wsAu", "8.596e-04*4.*TMath::Pi()*x^2/(1+exp((x-6.38)/0.535))", 0., 20.);
-  else if (B==129) {
-    TF2 *f = new TF2("wsXe2a","x*x*TMath::Sin(y)/(1+exp((x-[0]*(1+[2]*0.315*(3*pow(cos(y),2)-1.0)+[3]*0.105*(35*pow(cos(y),4)-30*pow(cos(y),2)+3)))/[1]))",0,15,0.0,TMath::Pi());
-    rwsF[1]=f; 
-    f->SetNpx(120);
-    f->SetNpy(120);
-    f->SetParameters(5.36,0.59,0.18,0);
-  }
-  else if (B==40)
-    rwsF[1] =  new TF1("wsAr", "1.*TMath::Pi()*x^2/(1+exp((x-3.53)/0.542))", 0., 20.);
-  else if (B==16) {
-    rwsF[1] =  new TF1("wsO", "x*x*(1+[2]*(x/[0])**2)/(1+exp((x-[0])/[1]))",0, 20.);
-    rwsF[1]->SetParameters(2.608,0.513,-0.051);
-  } else if (B==6)
-    rwsF[1] =  new TF1("wsC", "7.208e-4*4.*TMath::Pi()*x^2*(1.-0.149*(x/2.46)**2)/(1+exp((x-2.46)/0.522))", 0., 20.);
-  else if (B==3)
-    rwsF[1] =  new TF1("wsHe", "7.208e-4*4.*TMath::Pi()*x^2*(1.+0.517*(x/0.964)**2)/(1+exp((x-0.964)/0.322))", 0., 20.);
-  else if (B==1)
-    rwsF[1] = new TF1("prot","x*x*exp(-x/0.234)",0,5);
+  rwsF[0] = NucleonDensity(A);
+  rwsF[1] = NucleonDensity(B);
 
   // matter distribution in proton
   TF1* eik = new TF1("eik", "[0]^2/[1] * ([0]*x)^3*TMath::BesselK(3, [0] * x)", 0., 10.);
