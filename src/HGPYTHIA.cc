@@ -26,7 +26,7 @@ It was ported to run on top of a default PYTHIA installation by Austin Baty (aba
 #include <iostream>
 
 using namespace Pythia8;
-Int_t EvalMult(Pythia * pythia,TClonesArray &arr, Double_t etamin1=2.5, Double_t etamax1=5., Double_t etamin2=100, Double_t etamax2=100, bool doEt = false);
+Int_t EvalMult(Pythia * pythia,TClonesArray &arr, Double_t etamin1=2.5, Double_t etamax1=5., Double_t etamin2=100, Double_t etamax2=100, bool doEt = false, bool fillArr = true);
 
 // 1 mb = 0.1 fm^2
 // 1 b  = 100 fm^2
@@ -526,9 +526,10 @@ void glauberPythia(const int RNGSeedOffset = 0,
      
       //get multiplicities for this event 
       Int_t mult0 = EvalMult(&pythia, arrpp,cetamin,cetamax);
-      Int_t mulv0 = EvalMult(&pythia, arrpp,-3.7,-1.7,2.8,5.1);
-      Int_t mult1 = EvalMult(&pythia, arrpp,1,2);
-      Float_t hfSumTemp = ((Float_t) EvalMult(&pythia, arrpp, -5, -3, 3, 5, true)) / 1000.0;
+      // the charged particles at |eta|<1 are stored in arrpp by the first call only
+      Int_t mulv0 = EvalMult(&pythia, arrpp,-3.7,-1.7,2.8,5.1,false,false);
+      Int_t mult1 = EvalMult(&pythia, arrpp,1,2,100,100,false,false);
+      Float_t hfSumTemp = ((Float_t) EvalMult(&pythia, arrpp, -5, -3, 3, 5, true, false)) / 1000.0;
       if (1) { //fill pp
 	    Int_t npp = arrpp.GetEntries();
 	    hMultVsMPIpp->Fill(npp,mpic);
@@ -721,7 +722,7 @@ void glauberPythia(const int RNGSeedOffset = 0,
     
 
 
-Int_t EvalMult(Pythia * pythia, TClonesArray &arr, Double_t etamin1, Double_t etamax1, Double_t etamin2, Double_t etamax2, bool doEt)
+Int_t EvalMult(Pythia * pythia, TClonesArray &arr, Double_t etamin1, Double_t etamax1, Double_t etamin2, Double_t etamax2, bool doEt, bool fillArr)
 {
     Int_t nparticle = pythia->event.size();
     Int_t mult = 0;
@@ -746,7 +747,7 @@ Int_t EvalMult(Pythia * pythia, TClonesArray &arr, Double_t etamin1, Double_t et
                 if(doEt) Et += pythia->event[part].pT();
             }
         }
-        if (etaabs<1) {
+        if (fillArr && etaabs<1) {
             new(arr[arri]) TVector3( pythia->event[part].px(), pythia->event[part].py(), pythia->event[part].pz());
             arri++;
         }
