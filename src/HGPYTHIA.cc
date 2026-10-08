@@ -144,6 +144,8 @@ void glauberPythia(const int RNGSeedOffset = 0,
 	sigH = 144.17;
       else if (energy<8100)
 	sigH = 166.184998;
+	  else if (energy<9700)
+	sigH = 180.87;
     }
   }
 
